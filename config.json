@@ -1,0 +1,27 @@
+{
+  "camera": { 
+    "index": 0, 
+    "width": 640, 
+    "height": 480, 
+    "fps_target": 24 
+  },
+  "serial": { 
+    "enabled": false, 
+    "port": "/dev/ttyACM0", 
+    "baud": 9600 
+  },
+  "logging": { 
+    "events_csv": "logs/events.csv" 
+  },
+  "inference": {
+    "mode": "ml", 
+    "model_path": "models/earmar_img_logreg.joblib", 
+    "prob_threshold": 0.65, 
+    "window_seconds": 1.0, 
+    "fps_assumed": 12, 
+    "consecutive_frames": 14,
+
+    "EAR_CLOSED_THRESH": 0.22,
+    "FRAMES_TO_ALERT": 30
+  }
+}
