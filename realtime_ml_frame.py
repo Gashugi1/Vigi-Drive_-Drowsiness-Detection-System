@@ -6,6 +6,7 @@ import json
 import numpy as np
 import joblib
 import mediapipe as mp
+
 # Use conditional import for serial
 try:
     import serial
@@ -307,3 +308,4 @@ if __name__ == "__main__":
         except NameError:
             pass # Detector was never created
 
+#new comment
