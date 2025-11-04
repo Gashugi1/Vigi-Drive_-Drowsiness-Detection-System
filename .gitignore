@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.DS_Store
+.vscode/
+.idea/
+features/*.csv
+logs/*.csv
+models/*.joblib
+*.mp4
+*.avi
+Datasets/
