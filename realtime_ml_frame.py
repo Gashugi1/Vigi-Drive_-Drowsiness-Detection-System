@@ -6,7 +6,7 @@ import json
 import numpy as np
 import joblib
 import mediapipe as mp
-# Use conditional import for serial
+
 try:
     import serial
 except ImportError:
