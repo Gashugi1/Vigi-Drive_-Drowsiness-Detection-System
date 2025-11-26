@@ -1,4 +1,4 @@
-# 🚗 Vigi-Drive: Advanced Drowsiness Detection System
+#  Vigi-Drive: Advanced Drowsiness Detection System
 
 **Vigi-Drive** is a production-grade, real-time drowsiness detection system designed to enhance road safety. Powered by computer vision and machine learning, it monitors driver fatigue levels using multi-modal analysis of facial features (eyes, mouth, blink rate) and provides progressive alerts to prevent accidents.
 
