@@ -140,12 +140,12 @@ class BlinkDetector:
 # --- MAIN CLASS ---
 
 class DrowsinessDetector:
-    def __init__(self, config_path="../config/config.json"):
+    def __init__(self, config_path="config/config.json"):
         # 1. Load Configuration
         self.CFG = self._load_config(config_path)
         
         # 2. Setup Logging
-        os.makedirs("../data/logs", exist_ok=True)
+        os.makedirs("data/logs", exist_ok=True)
         self.log_path = self.CFG["logging"]["events_csv"]
         self._setup_csv_log()
         
@@ -418,7 +418,7 @@ class DrowsinessDetector:
 if __name__ == "__main__":
     try:
         # Use a specific config file name if your script isn't named 'realtime_ml_frame.py'
-        detector = DrowsinessDetector(config_path="../config/config.json")
+        detector = DrowsinessDetector(config_path="config/config.json")
         detector.run()
     except IOError as e:
         print(f"[FATAL ERROR] {e}")

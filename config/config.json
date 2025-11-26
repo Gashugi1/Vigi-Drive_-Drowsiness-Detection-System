@@ -11,11 +11,11 @@
     "baud": 9600
   },
   "logging": {
-    "events_csv": "../data/logs/events.csv"
+    "events_csv": "data/logs/events.csv"
   },
   "inference": {
     "mode": "ml",
-    "model_path": "../src/models/earmar_img_logreg.joblib",
+    "model_path": "src/models/earmar_img_logreg.joblib",
     "prob_threshold": 0.70,
     "window_seconds": 1.0,
     "fps_assumed": 12,

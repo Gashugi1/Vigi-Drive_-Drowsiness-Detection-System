@@ -18,7 +18,7 @@ import os
 import time
 import numpy as np
 
-from src.core.realtime_ml_frame import (
+from .core.realtime_ml_frame import (
     DrowsinessDetector,
     LEFT_EYE_LANDMARKS,
     RIGHT_EYE_LANDMARKS,
@@ -31,7 +31,7 @@ from src.core.realtime_ml_frame import (
     MOUTH_TOP,
     MOUTH_BOTTOM,
 )
-from src.core.fatigue_classifier import FatigueClassifier
+from .core.fatigue_classifier import FatigueClassifier
 from collections import deque
 from functools import lru_cache
 import psutil
@@ -42,7 +42,7 @@ load_dotenv()
 def get_config_features():
     """Cached config reader to avoid repeated file I/O"""
     try:
-        with open('../config/config.json', 'r') as f:
+        with open('config/config.json', 'r') as f:
             cfg = json.load(f)
             return cfg.get('features', {})
     except Exception as e:
@@ -60,7 +60,7 @@ def get_psutil_process():
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///../data/instance/vigidrive.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///data/instance/vigidrive.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -147,7 +147,7 @@ def load_user(user_id):
 
 
 class WebDrowsinessDetector(DrowsinessDetector):
-    def __init__(self, config_path="../config/config.json"):
+    def __init__(self, config_path="config/config.json"):
         super().__init__(config_path=config_path)
         self.last_ear = 0.0
         self.last_mar = 0.0
@@ -619,7 +619,7 @@ class WebDrowsinessDetector(DrowsinessDetector):
         return display_frame
 
 
-detector = WebDrowsinessDetector(config_path="../config/config.json")
+detector = WebDrowsinessDetector(config_path="config/config.json")
 
 
 def generate_frames():
