@@ -18,12 +18,11 @@ import os
 import time
 import numpy as np
 
-from realtime_ml_frame import (
+from src.core.realtime_ml_frame import (
     DrowsinessDetector,
     LEFT_EYE_LANDMARKS,
     RIGHT_EYE_LANDMARKS,
     calculate_ear,
-    calculate_mar,
     calculate_mar,
     YawnDetector,
     BlinkDetector,
@@ -32,16 +31,36 @@ from realtime_ml_frame import (
     MOUTH_TOP,
     MOUTH_BOTTOM,
 )
-from fatigue_classifier import FatigueClassifier
+from src.core.fatigue_classifier import FatigueClassifier
 from collections import deque
+from functools import lru_cache
+import psutil
 
-# Load environment variables from .env file
 load_dotenv()
+
+@lru_cache(maxsize=1)
+def get_config_features():
+    """Cached config reader to avoid repeated file I/O"""
+    try:
+        with open('../config/config.json', 'r') as f:
+            cfg = json.load(f)
+            return cfg.get('features', {})
+    except Exception as e:
+        print(f"[ERROR] Failed to load config: {e}")
+        return {'sound_alerts': {'enabled': False, 'sound_file': 'sounds/drowsiness_alert.aiff'}}
+
+_psutil_process = None
+def get_psutil_process():
+    """Returns cached psutil Process instance to avoid repeated initialization"""
+    global _psutil_process
+    if _psutil_process is None:
+        _psutil_process = psutil.Process(os.getpid())
+    return _psutil_process
 
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///vigidrive.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///../data/instance/vigidrive.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db = SQLAlchemy(app)
@@ -69,9 +88,11 @@ class User(db.Model, UserMixin):
 
 
 class DrowsinessEvent(db.Model):
+    __tablename__ = 'drowsiness_event'
+    
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True, index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     ear = db.Column(db.Float)
     mar = db.Column(db.Float)
     p_drowsy = db.Column(db.Float)
@@ -126,7 +147,7 @@ def load_user(user_id):
 
 
 class WebDrowsinessDetector(DrowsinessDetector):
-    def __init__(self, config_path="config.json"):
+    def __init__(self, config_path="../config/config.json"):
         super().__init__(config_path=config_path)
         self.last_ear = 0.0
         self.last_mar = 0.0
@@ -598,7 +619,7 @@ class WebDrowsinessDetector(DrowsinessDetector):
         return display_frame
 
 
-detector = WebDrowsinessDetector(config_path="config.json")
+detector = WebDrowsinessDetector(config_path="../config/config.json")
 
 
 def generate_frames():
@@ -711,13 +732,14 @@ def video_feed():
 @login_required
 def events():
     """Events page - requires authentication"""
-    # Show only the authenticated user's events
-    events_list = (
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    events_paginated = (
         DrowsinessEvent.query.filter_by(user_id=current_user.id)
         .order_by(DrowsinessEvent.timestamp.desc())
-        .all()
+        .paginate(page=page, per_page=per_page, error_out=False)
     )
-    return render_template("events.html", events=events_list)
+    return render_template("events.html", events=events_paginated.items, pagination=events_paginated)
 
 
 # Settings route archived - use config.json for advanced configuration
@@ -742,13 +764,11 @@ def analytics():
 def performance_stats():
     """Real-time performance metrics for analytics dashboard"""
     try:
-        import psutil
-        process = psutil.Process(os.getpid())
-        # Use process CPU percent (cumulative, doesn't need interval)
+        process = get_psutil_process()
         cpu_percent = process.cpu_percent(interval=0.1)
         memory_mb = process.memory_info().rss / 1024 / 1024
     except Exception as e:
-        print(f"[ERROR] performance_stats psutil error: {e}")
+        print(f"[ERROR] performance_stats: {e}")
         cpu_percent = 0
         memory_mb = 0
     
@@ -788,13 +808,11 @@ def analytics_data():
 def system_health():
     """System resource monitoring"""
     try:
-        import psutil
-        process = psutil.Process(os.getpid())
-        # Use process CPU percent (cumulative, doesn't need interval)
+        process = get_psutil_process()
         cpu_percent = process.cpu_percent(interval=0.1)
         memory_mb = process.memory_info().rss / 1024 / 1024
     except Exception as e:
-        print(f"[ERROR] system_health psutil error: {e}")
+        print(f"[ERROR] system_health: {e}")
         cpu_percent = 0
         memory_mb = 0
     
@@ -818,23 +836,15 @@ def about():
 
 @app.route("/status")
 def status():
-    # System health metrics (CPU/Memory)
     try:
-        import psutil
-        process = psutil.Process(os.getpid())
-        # Use process CPU percent (cumulative, doesn't need interval)
+        process = get_psutil_process()
         cpu_percent = process.cpu_percent(interval=0.1)
         memory_mb = process.memory_info().rss / 1024 / 1024
-    except ImportError as e:
-        print(f"[ERROR] psutil ImportError: {e}")
-        cpu_percent = 0.0
-        memory_mb = 0.0
     except Exception as e:
-        print(f"[ERROR] status psutil error: {e}")
+        print(f"[ERROR] status: {e}")
         cpu_percent = 0.0
         memory_mb = 0.0
     
-    # Get session-specific data (not global!)
     session_data = detector.get_current_session_data()
     
     data = {
@@ -845,16 +855,12 @@ def status():
         "running": detector.detector_running,
         "closure_frames": int(detector.closure_frames),
         "alert": detector.alert_on,
-        
-        # Multi-modal metrics
         "yawn_count": int(detector.last_yawn_count),
         "blink_rate": float(detector.last_blink_rate),
         "fatigue_level": int(detector.last_fatigue_level),
         "fatigue_score": float(detector.last_fatigue_score),
-        
-        # System health (for analytics dashboard)
-        "confidence_score": round(float(detector.last_prob * 100), 1),  # As percentage 0-100
-        "alert_threshold": round(float(detector.p_thresh * 100), 1),    # From config
+        "confidence_score": round(float(detector.last_prob * 100), 1),
+        "alert_threshold": round(float(detector.p_thresh * 100), 1),
         "cpu_percent": round(cpu_percent, 1),
         "memory_mb": round(memory_mb, 1),
         "camera_status": "Active" if detector.cap.isOpened() else "Inactive",
@@ -868,21 +874,7 @@ def status():
 @app.route("/api/features")
 def get_features():
     """Expose enabled features to frontend"""
-    try:
-        with open('config.json', 'r') as f:
-            cfg = json.load(f)
-            features = cfg.get('features', {})
-    except Exception as e:
-        print(f"[ERROR] Failed to load features from config: {e}")
-        # Return safe defaults
-        features = {
-            'sound_alerts': {
-                'enabled': False,
-                'sound_file': 'sounds/drowsiness_alert.aiff'
-            }
-        }
-    
-    return jsonify(features)
+    return jsonify(get_config_features())
 
 
 @app.route("/login")

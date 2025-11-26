@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-from realtime_ml_frame import calculate_ear, calculate_mar
-from fatigue_classifier import FatigueClassifier
+from src.core.realtime_ml_frame import calculate_ear, calculate_mar
+from src.core.fatigue_classifier import FatigueClassifier
 
 class TestDrowsinessLogic(unittest.TestCase):
     def setUp(self):

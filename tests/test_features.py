@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from realtime_ml_frame import calculate_ear, calculate_mar, l2, denorm_landmarks
+from src.core.realtime_ml_frame import calculate_ear, calculate_mar, l2, denorm_landmarks
 
 
 class TestUtilityFunctions:
