@@ -1,12 +1,6 @@
 # Vigi-Drive Drowsiness Detection System
 ## Complete Technical Review & Architecture Guide
 
-**Author**: Antigravity AI Agent  
-**Date**: November 24, 2025  
-**System Version**: Based on codebase analysis  
-
----
-
 ## Table of Contents
 
 1. [Executive Summary](#executive-summary)
