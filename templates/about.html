@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <h2 class="text-gradient mb-3">ℹ️ About Vigi-Drive</h2>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card mb-4">
+      <div class="card-body">
+        <h4 class="mb-3">What is Vigi-Drive?</h4>
+        <p>
+          Vigi-Drive is an advanced real-time drowsiness detection system that uses computer vision
+          and machine learning to monitor driver alertness. By analyzing facial landmarks through a
+          webcam, the system can detect early signs of drowsiness and trigger alerts to prevent accidents.
+        </p>
+        <p>
+          The system continuously tracks eye closure patterns (Eye Aspect Ratio - EAR) and mouth
+          movements (Mouth Aspect Ratio - MAR) to calculate a drowsiness probability score using a
+          trained machine learning model.
+        </p>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">🔧 Key Features</h5>
+      </div>
+      <div class="card-body">
+        <ul class="mb-0">
+          <li><strong>Real-time Video Monitoring:</strong> Live camera feed with drowsiness detection overlay</li>
+          <li><strong>Machine Learning Detection:</strong> Trained model predicts drowsiness probability</li>
+          <li><strong>Multi-metric Analysis:</strong> Combines EAR, MAR, and temporal patterns</li>
+          <li><strong>Alert System:</strong> Visual and optional hardware alerts (buzzer via serial)</li>
+          <li><strong>Event Logging:</strong> Comprehensive history of drowsiness events</li>
+          <li><strong>Configurable Thresholds:</strong> Adjustable sensitivity for different scenarios</li>
+          <li><strong>Web-based Interface:</strong> Access from any device on your network</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">🔬 Technical Details</h5>
+      </div>
+      <div class="card-body">
+        <h6>Technology Stack</h6>
+        <ul>
+          <li><strong>Backend:</strong> Python, Flask, OpenCV, MediaPipe</li>
+          <li><strong>ML Framework:</strong> scikit-learn (Logistic Regression)</li>
+          <li><strong>Frontend:</strong> HTML5, Bootstrap 5, Custom CSS/JS</li>
+          <li><strong>Database:</strong> SQLite (SQLAlchemy ORM)</li>
+        </ul>
+
+        <h6 class="mt-3">How It Works</h6>
+        <ol>
+          <li><strong>Face Detection:</strong> MediaPipe detects facial landmarks in real-time</li>
+          <li><strong>Feature Extraction:</strong> Calculates EAR and MAR from landmark positions</li>
+          <li><strong>ML Prediction:</strong> Features fed to trained model for drowsiness probability</li>
+          <li><strong>Alert Logic:</strong> Triggers alerts based on configurable thresholds</li>
+          <li><strong>Event Logging:</strong> Stores events in database for analysis</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <h6 class="mb-0">📊 Metrics Explained</h6>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <strong>EAR (Eye Aspect Ratio)</strong>
+          <p class="small text-secondary mb-0">
+            Ratio of eye vertical to horizontal dimensions. Lower values (≤0.22) indicate closed eyes.
+          </p>
+        </div>
+        <div class="mb-3">
+          <strong>MAR (Mouth Aspect Ratio)</strong>
+          <p class="small text-secondary mb-0">
+            Measures mouth opening. Higher values indicate yawning, a drowsiness indicator.
+          </p>
+        </div>
+        <div class="mb-0">
+          <strong>p(drowsy)</strong>
+          <p class="small text-secondary mb-0">
+            ML model confidence (0-1). Values >0.7 indicate high drowsiness probability.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <h6 class="mb-0">🚀 Getting Started</h6>
+      </div>
+      <div class="card-body">
+        <ol class="small mb-0">
+          <li>Grant camera permissions</li>
+          <li>Navigate to <strong>Home</strong></li>
+          <li>Click <strong>Start Detection</strong></li>
+          <li>View <strong>Live Monitor</strong></li>
+          <li>Configure in <strong>Settings</strong></li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body text-center">
+        <h6 class="mb-3">⚠️ Safety Notice</h6>
+        <p class="small text-secondary mb-0">
+          This system is a supplementary safety tool. It should NOT replace proper rest and safe driving practices.
+          Always ensure adequate sleep before driving.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

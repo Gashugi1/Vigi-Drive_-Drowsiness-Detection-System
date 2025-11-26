@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <h2 class="text-gradient mb-3">⚙️ Settings</h2>
+    <p class="text-secondary">Configure detection thresholds and parameters</p>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Detection Parameters</h5>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          <div class="mb-4">
+            <label for="prob_threshold" class="form-label">
+              🤖 Probability Threshold
+              <span class="badge bg-secondary ms-2">Currently: {{ config.prob_threshold or 0.65 }}</span>
+            </label>
+            <input type="number" step="0.01" min="0" max="1" class="form-control" id="prob_threshold"
+              name="prob_threshold" value="{{ config.prob_threshold or 0.65 }}">
+            <small class="form-text text-secondary">
+              Minimum probability (0.0-1.0) to trigger drowsiness detection. Lower = more sensitive.
+            </small>
+          </div>
+
+          <div class="mb-4">
+            <label for="EAR_CLOSED_THRESH" class="form-label">
+              👁️ EAR Closed Threshold
+              <span class="badge bg-secondary ms-2">Currently: {{ config.EAR_CLOSED_THRESH or 0.22 }}</span>
+            </label>
+            <input type="number" step="0.01" class="form-control" id="EAR_CLOSED_THRESH" name="EAR_CLOSED_THRESH"
+              value="{{ config.EAR_CLOSED_THRESH or 0.22 }}">
+            <small class="form-text text-secondary">
+              Eye Aspect Ratio threshold below which eyes are considered closed. Typical range: 0.15-0.25.
+            </small>
+          </div>
+
+          <div class="mb-4">
+            <label for="FRAMES_TO_ALERT" class="form-label">
+              🔔 Frames to Alert
+              <span class="badge bg-secondary ms-2">Currently: {{ config.FRAMES_TO_ALERT or 30 }}</span>
+            </label>
+            <input type="number" step="1" min="1" class="form-control" id="FRAMES_TO_ALERT" name="FRAMES_TO_ALERT"
+              value="{{ config.FRAMES_TO_ALERT or 30 }}">
+            <small class="form-text text-secondary">
+              Number of consecutive closed-eye frames before triggering alert. At ~30fps, 30 frames ≈ 1 second.
+            </small>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg">💾 Save Settings</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h6 class="mb-0">🎯 Preset Configurations</h6>
+      </div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-primary btn-sm" onclick="setPreset(0.50, 0.20, 20)">
+            High Sensitivity
+          </button>
+          <button class="btn btn-outline-primary btn-sm" onclick="setPreset(0.65, 0.22, 30)">
+            Default (Recommended)
+          </button>
+          <button class="btn btn-outline-primary btn-sm" onclick="setPreset(0.80, 0.25, 45)">
+            Low Sensitivity
+          </button>
+        </div>
+        <hr>
+        <small class="text-secondary">
+          <strong>Tip:</strong> Use higher sensitivity for highway driving, lower for city driving or if getting false
+          positives.
+        </small>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6>📝 Notes</h6>
+        <ul class="small text-secondary mb-0">
+          <li>Settings are saved immediately</li>
+          <li>Changes apply to new detections</li>
+          <li>Test changes on Live Monitor</li>
+          <li>Backed up to config.json</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setPreset(prob, ear, frames) {
+    document.getElementById('prob_threshold').value = prob;
+    document.getElementById('EAR_CLOSED_THRESH').value = ear;
+    document.getElementById('FRAMES_TO_ALERT').value = frames;
+  }
+</script>
+{% endblock %}

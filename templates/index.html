@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="hero">
+  <h1>🚗 Vigi-Drive</h1>
+  <p class="lead">Advanced Real-Time Drowsiness Detection System</p>
+
+  <div class="d-flex justify-content-center align-items-center gap-3 mb-4">
+    <div class="status-indicator">
+      <div class="status-dot {{ 'active' if status == 'Running' else 'inactive' }}"></div>
+      <span>System Status: <strong>{{ status }}</strong></span>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-center mb-5">
+    <a href="{{ url_for('monitor') }}" class="btn btn-success btn-lg" style="font-size: 1.25rem; padding: 1rem 3rem;">
+      📹 Start Monitoring →
+    </a>
+  </div>
+</div>
+
+<div class="row g-4 mb-5">
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📹</div>
+        <h5 class="card-title">Live Monitoring</h5>
+        <p class="card-text">Real-time camera feed with drowsiness detection overlay and alerts</p>
+        <a href="{{ url_for('monitor') }}" class="btn btn-primary">View Monitor</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+        <h5 class="card-title">Event History</h5>
+        <p class="card-text">Track and analyze drowsiness events with detailed metrics</p>
+        <a href="{{ url_for('events') }}" class="btn btn-primary">View Events</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">⚙️</div>
+        <h5 class="card-title">Settings</h5>
+        <p class="card-text">Configure detection thresholds and system parameters</p>
+        <a href="{{ url_for('settings') }}" class="btn btn-primary">Configure</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h3 class="text-gradient mb-3">How It Works</h3>
+        <div class="row g-4">
+          <div class="col-md-3 text-center">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">👁️</div>
+            <h6>Eye Tracking</h6>
+            <p class="text-secondary small">Monitors eye aspect ratio (EAR) to detect eye closure</p>
+          </div>
+          <div class="col-md-3 text-center">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">😮</div>
+            <h6>Mouth Detection</h6>
+            <p class="text-secondary small">Analyzes mouth aspect ratio (MAR) for yawning detection</p>
+          </div>
+          <div class="col-md-3 text-center">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">🤖</div>
+            <h6>ML Processing</h6>
+            <p class="text-secondary small">Machine learning model predicts drowsiness probability</p>
+          </div>
+          <div class="col-md-3 text-center">
+            <div style="font-size: 2.5rem; margin-bottom: 1rem;">🔔</div>
+            <h6>Alert System</h6>
+            <p class="text-secondary small">Real-time alerts when drowsiness is detected</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

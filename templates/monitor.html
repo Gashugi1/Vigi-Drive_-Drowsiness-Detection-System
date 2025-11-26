@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="text-gradient mb-0">📹 Live Monitor</h2>
+
+      <!-- Start Monitoring Button -->
+      <form action="{{ url_for('monitor') }}" method="post" class="d-inline">
+        <input type="hidden" name="action" value="start">
+        <button type="submit" class="btn btn-success btn-lg glow">
+          📷 START MONITORING <i class="fas fa-arrow-right ms-2"></i>
+        </button>
+      </form>
+
+      <button onclick="stopMonitoring()" class="btn btn-danger btn-lg glow ms-3">
+        🛑 STOP MONITORING
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Alert Notification Modal -->
+<div id="drowsinessAlert" class="alert-notification" style="display: none;">
+  <div class="alert-notification-content">
+    <div class="alert-icon">⚠️</div>
+    <h3 class="alert-title">DROWSINESS DETECTED!</h3>
+    <p class="alert-message">Please pull over safely and take a break</p>
+    <div class="alert-level" id="alertLevel">Fatigue Level: Severe</div>
+    <button onclick="dismissAlert()" class="btn btn-light mt-3">Dismiss</button>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Top Row: Video Feed + 4 Cards Side-by-Side -->
+  <div class="col-lg-8">
+    <div class="video-container" id="videoContainer" style="position: relative; z-index: 1;">
+      <img id="video-stream" src="{{ url_for('video_feed') }}" class="img-fluid" alt="Live Video Feed"
+        style="display: block; width: 100%; height: auto; border-radius: 15px;" />
+    </div>
+  </div>
+
+  <!-- Right Column: 4 Cards Vertical -->
+  <div class="col-lg-4">
+    <h5 class="mb-3">Real-Time Metrics</h5>
+    <!-- Fatigue Level -->
+    <div class="metric-card mb-2"
+      style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1));">
+      <div class="metric-label">⚡ Fatigue Level</div>
+      <h3><span id="fatigue_level" class="badge bg-success rounded-pill">Fully Alert</span></h3>
+      <small class="text-secondary">Score: <span id="fatigue_score">0.0%</span></small>
+    </div>
+
+    <!-- EAR Metric -->
+    <div class="metric-card mb-2">
+      <div class="metric-label">👁️ EAR</div>
+      <div class="metric-value" id="ear">0.000</div>
+      <small class="text-secondary">Eye closure indicator</small>
+    </div>
+
+    <!-- MAR Metric -->
+    <div class="metric-card mb-2">
+      <div class="metric-label">😮 MAR</div>
+      <div class="metric-value" id="mar">0.000</div>
+      <small class="text-secondary">Yawn indicator</small>
+    </div>
+
+    <!-- Yawn Count -->
+    <div class="metric-card">
+      <div class="metric-label">🥱 Yawn Count (Last Minute)</div>
+      <div class="metric-value" id="yawn_count">0</div>
+      <small class="text-secondary">Normal: 0-1 yawns/min</small>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Row: 3 Cards Horizontal -->
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <div class="row g-3">
+      <!-- Blink Rate -->
+      <div class="col-md-4">
+        <div class="metric-card">
+          <div class="metric-label">👀 Blink Rate</div>
+          <div class="metric-value" id="blink_rate">0.0 bpm</div>
+          <small class="text-secondary">Normal: 15-20 bpm</small>
+        </div>
+      </div>
+
+      <!-- Detection State -->
+      <div class="col-md-4">
+        <div class="metric-card">
+          <div class="metric-label">🔍 Detection State</div>
+          <h4><span id="state" class="badge bg-secondary rounded-pill">idle</span></h4>
+        </div>
+      </div>
+
+      <!-- Detector Status -->
+      <div class="col-md-4">
+        <div class="metric-card">
+          <div class="metric-label">⚙️ Detector Status</div>
+          <h4><span id="running" class="badge bg-success rounded-pill">Running</span></h4>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="alert alert-info">
+      <strong>ℹ️ Always Monitoring:</strong> Detection starts automatically when you open this page. The system
+      continuously tracks drowsiness and will alert you immediately when detected.
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- SOUND ALERT SYSTEM ---
+  let alertSound = null;
+  let soundEnabled = false;
+
+  // Initialize on page load
+  window.addEventListener('DOMContentLoaded', () => {
+    // Fetch feature flags from backend
+    fetch('/api/features')
+      .then(res => res.json())
+      .then(features => {
+        soundEnabled = features.sound_alerts?.enabled ?? false;
+        console.log('🔊 Sound alerts:', soundEnabled ? 'ENABLED' : 'DISABLED');
+
+        if (soundEnabled) {
+          // Preload audio for instant playback
+          alertSound = new Audio('/static/sounds/drowsiness_alert.mp3');
+          alertSound.loop = true; // Loop until dismissed
+          alertSound.preload = 'auto';
+
+          // Prime audio on first user interaction (iOS requirement)
+          document.addEventListener('click', () => {
+            if (alertSound && alertSound.paused) {
+              alertSound.volume = 0;
+              alertSound.play().then(() => {
+                alertSound.pause();
+                alertSound.volume = 1;
+                alertSound.currentTime = 0;
+                console.log('✅ Audio primed for iOS');
+              }).catch(() => { });
+            }
+          }, { once: true });
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load features:', err);
+        soundEnabled = false; // Safe default
+      });
+  });
+
+  // Stop sound on page unload
+  window.addEventListener('beforeunload', () => {
+    if (alertSound && !alertSound.paused) {
+      alertSound.pause();
+    }
+  });
+
+  // --- ALERT FUNCTIONS ---
+  function dismissAlert() {
+    // Stop sound immediately
+    if (alertSound && !alertSound.paused) {
+      alertSound.pause();
+      alertSound.currentTime = 0;
+      console.log('🔇 Sound stopped');
+    }
+
+    // Hide modal
+    document.getElementById('drowsinessAlert').style.display = 'none';
+  }
+
+  // Auto-dismiss alert after 10 seconds
+  let alertTimeout;
+  function showDrowsinessAlert(level, levelName) {
+    const alertEl = document.getElementById('drowsinessAlert');
+    const levelEl = document.getElementById('alertLevel');
+
+    levelEl.textContent = `Fatigue Level: ${levelName}`;
+    alertEl.style.display = 'flex';
+
+    // Play sound if enabled
+    if (soundEnabled && alertSound) {
+      // Stop previous instance if playing
+      if (!alertSound.paused) {
+        alertSound.pause();
+        alertSound.currentTime = 0;
+      }
+
+      // Play alert sound
+      alertSound.play()
+        .then(() => {
+          console.log('🔊 Alert sound playing');
+        })
+        .catch(err => {
+          console.error('Failed to play alert sound:', err);
+          // Autoplay might be blocked - show warning
+          if (err.name === 'NotAllowedError') {
+            console.warn('⚠️ Autoplay blocked by browser. Please enable sound.');
+          }
+        });
+    }
+
+    // Ensure video continues loading
+    const videoStream = document.getElementById('video-stream');
+    if (videoStream) {
+      videoStream.style.display = 'block';
+      videoStream.style.visibility = 'visible';
+    }
+
+    // Auto-dismiss after 10 seconds
+    clearTimeout(alertTimeout);
+    alertTimeout = setTimeout(dismissAlert, 10000);
+  }
+
+  // Stop Monitoring Function
+  function stopMonitoring() {
+    // Stop any playing alert sound
+    if (alertSound && !alertSound.paused) {
+      alertSound.pause();
+      alertSound.currentTime = 0;
+    }
+
+    // Disable button during request
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Stopping...';
+
+    fetch('/stop_monitoring', { method: 'POST' })
+      .then(response => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        if (data.status === 'stopped') {
+          alert('✅ Monitoring stopped successfully!');
+          window.location.href = '/home';
+        }
+      })
+      .catch(err => {
+        console.error('Error stopping:', err);
+        alert('❌ Failed to stop monitoring. Error: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      });
+  }
+</script>
+
+<style>
+  .alert-notification {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+    pointer-events: auto;
+  }
+
+  .alert-notification-content {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    padding: 3rem;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 500px;
+    box-shadow: 0 20px 60px rgba(239, 68, 68, 0.6);
+    animation: slideIn 0.4s ease;
+  }
+
+  .alert-icon {
+    font-size: 5rem;
+    animation: pulse 1s infinite;
+  }
+
+  .alert-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    margin: 1rem 0;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .alert-message {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.95);
+    margin-bottom: 0.5rem;
+  }
+
+  .alert-level {
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 600;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: scale(0.8) translateY(-50px);
+      opacity: 0;
+    }
+
+    to {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes pulse {
+
+    0%,
+    100% {
+      transform: scale(1);
+    }
+
+    50% {
+      transform: scale(1.1);
+    }
+  }
+</style>
+{% endblock %}

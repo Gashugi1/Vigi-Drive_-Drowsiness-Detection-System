@@ -57,6 +57,86 @@ def calculate_mar(landmarks, W, H):
     # Vertical (Top-Bottom) / Horizontal (Left-Right)
     return l2(T, B) / (l2(L, R) + 1e-6)
 
+
+
+
+
+class YawnDetector:
+    """Detects and counts yawns based on MAR threshold and duration"""
+    def __init__(self, mar_threshold=0.6, min_duration_frames=15, cooldown_frames=30):
+        self.mar_threshold = mar_threshold
+        self.min_duration_frames = min_duration_frames
+        self.cooldown_frames = cooldown_frames
+        self.yawn_frames = 0
+        self.yawn_count = 0
+        self.cooldown_counter = 0
+        self.yawn_timestamps = []
+    
+    def update(self, mar_value, current_time):
+        """Update yawn detection with current MAR value"""
+        # Cooldown period after detecting a yawn
+        if self.cooldown_counter > 0:
+            self.cooldown_counter -= 1
+            return False
+        
+        # Check if mouth is open enough
+        if mar_value > self.mar_threshold:
+            self.yawn_frames += 1
+        else:
+            # Check if we had a sustained yawn
+            if self.yawn_frames >= self.min_duration_frames:
+                self.yawn_count += 1
+                self.yawn_timestamps.append(current_time)
+                self.cooldown_counter = self.cooldown_frames
+                self.yawn_frames = 0
+                return True  # Yawn detected
+            self.yawn_frames = 0
+        
+        return False
+    
+    def get_yawns_per_minute(self, current_time, window_seconds=60):
+        """Get number of yawns in the last window_seconds"""
+        cutoff_time = current_time - window_seconds
+        self.yawn_timestamps = [t for t in self.yawn_timestamps if t > cutoff_time]
+        return len(self.yawn_timestamps)
+
+
+class BlinkDetector:
+    """Detects and analyzes blink rate"""
+    def __init__(self, ear_threshold=0.21, min_blink_frames=2, max_blink_frames=10):
+        self.ear_threshold = ear_threshold
+        self.min_blink_frames = min_blink_frames
+        self.max_blink_frames = max_blink_frames
+        self.blink_frames = 0
+        self.was_blinking = False
+        self.blink_count = 0
+        self.blink_timestamps = []
+    
+    def update(self, ear_value, current_time):
+        """Update blink detection with current EAR value"""
+        is_blinking = ear_value < self.ear_threshold
+        
+        if is_blinking:
+            self.blink_frames += 1
+        else:
+            # Check if we had a valid blink
+            if self.was_blinking and self.min_blink_frames <= self.blink_frames <= self.max_blink_frames:
+                self.blink_count += 1
+                self.blink_timestamps.append(current_time)
+            self.blink_frames = 0
+        
+        self.was_blinking = is_blinking
+        return self.was_blinking and self.blink_frames == self.min_blink_frames
+    
+    def get_blink_rate(self, current_time, window_seconds=60):
+        """Get blinks per minute in the last window"""
+        cutoff_time = current_time - window_seconds
+        self.blink_timestamps = [t for t in self.blink_timestamps if t > cutoff_time]
+        # Convert to blinks per minute
+        return len(self.blink_timestamps) * (60.0 / window_seconds)
+
+# ---------------------------------------------
+
 # --- MAIN CLASS ---
 
 class DrowsinessDetector:
@@ -83,8 +163,20 @@ class DrowsinessDetector:
         self.EAR_RESET_THRESH = self.EAR_THRESH + 0.03 
         
         # 4. Initialize State Variables
-        self.closure_frames = 0 # Replaces 'self.hit'
+        self.closure_frames = 0  # Frame counter for closure detection
+        self.closure_start_time = None  # Time-based tracking (more reliable than frames)
         self.alert_on = False
+        self.show_enhanced = False  # Toggle enhanced frame view for debugging
+        
+        # Face tracking continuity
+        self.no_face_frames = 0
+        self.NO_FACE_GRACE = 15  # ~0.6s grace period at 24fps before reset
+        
+        # Time-based threshold (seconds)
+        self.ALERT_DURATION_SEC = 2.7  # Replaces frame-based FRAMES_TO_ALERT
+        
+        # Landmark quality thresholds
+        self.MIN_LANDMARK_VISIBILITY = 0.5  # Confidence threshold for landmark quality
         
         # 5. Initialize Video Capture and MediaPipe
         # Set camera properties from config
@@ -170,7 +262,7 @@ class DrowsinessDetector:
 
     def run(self):
         """The main video processing and inference loop."""
-        print("[Info] Press 'q' to quit, 'b' for buzzer test (if enabled)")
+        print("[Info] Press 'q' to quit, 'b' for buzzer test (if enabled), 'e' to toggle debug view")
         
         while True:
             ok, frame = self.cap.read()
@@ -178,7 +270,7 @@ class DrowsinessDetector:
                 cv2.waitKey(1)
                 continue
             
-            # --- NEW: LOW-LIGHT PRE-PROCESSING ---
+            # --- LOW-LIGHT PRE-PROCESSING ---
             # 1. Convert BGR to LAB color space (separates lightness from color)
             lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
             
@@ -204,6 +296,17 @@ class DrowsinessDetector:
             
             if res.multi_face_landmarks:
                 lm = res.multi_face_landmarks[0].landmark
+                self.no_face_frames = 0  # Reset no-face counter when face detected
+                
+                # Check landmark quality (visibility/confidence) - for logging only
+                # MediaPipe provides visibility scores for each landmark
+                critical_landmarks = LEFT_EYE_LANDMARKS + RIGHT_EYE_LANDMARKS + [MOUTH_LEFT, MOUTH_RIGHT, MOUTH_TOP, MOUTH_BOTTOM]
+                visibility_scores = [lm[i].visibility if hasattr(lm[i], 'visibility') else 1.0 for i in critical_landmarks]
+                min_visibility = min(visibility_scores) if visibility_scores else 1.0
+                
+                # Log low-confidence frames but continue processing
+                if min_visibility < self.MIN_LANDMARK_VISIBILITY and min_visibility < 1.0:
+                    cv2.putText(frame, f"Low confidence ({min_visibility:.2f})", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 165, 0), 2)
                 
                 # 1. Feature Calculation
                 left_ear = calculate_ear(lm, LEFT_EYE_LANDMARKS, W, H)
@@ -216,7 +319,7 @@ class DrowsinessDetector:
                     "ear": e_val, 
                     "mar": m_val,
                     "eye_close": 1.0 if e_val < self.EAR_THRESH else 0.0, # Use configured thresh
-                    "mouth_open": 1.0 if m_val > 0.60 else 0.0 # Can also configure this
+                    "mouth_open": 1.0 if m_val > self.CFG["inference"].get("mouth_open_threshold", 0.60) else 0.0 # Use configured thresh
                 }
                 
                 # 3. Model Inference (FOR DISPLAY ONLY)
@@ -224,16 +327,24 @@ class DrowsinessDetector:
                 x_scaled = self.scaler.transform(x)
                 p_d = self.clf.predict_proba(x_scaled)[0, 1]
 
-                # --- NEW DROWSINESS LOGIC (Based on EAR duration) ---
+                # --- DROWSINESS LOGIC (Time-based with ML confirmation) ---
                 
-                # 4. Check for physical eye closure
+                # 4. Time-based eye closure tracking
                 if e_val < self.EAR_THRESH:
-                    self.closure_frames += 1
+                    if self.closure_start_time is None:
+                        self.closure_start_time = time.time()
+                    closure_duration = time.time() - self.closure_start_time
+                    self.closure_frames += 1  # Keep for backward compatibility
                 else:
+                    self.closure_start_time = None
+                    closure_duration = 0.0
                     self.closure_frames = 0
                     
-                # 5. Alert Trigger and Action
-                if self.closure_frames >= self.FRAMES_TO_ALERT and not self.alert_on:
+                # 5. Alert Trigger (DUAL-GATE: time-based + ML confirmation)
+                # BOTH conditions must be met to trigger alert
+                if (closure_duration >= self.ALERT_DURATION_SEC and 
+                    p_d >= self.p_thresh and  # ML confirmation gate
+                    not self.alert_on):
                     self.alert_on = True
                     self._log_event(e_val, m_val, p_d, "drowsy_microsleep")
                     self._send_buzzer_signal(signal="1\n")
@@ -243,34 +354,42 @@ class DrowsinessDetector:
                     self.alert_on = False
                     self.closure_frames = 0 # Reset counter when alert is off
                 
-                # --- END NEW LOGIC ---
+                # --- END LOGIC ---
 
             else:
-                cv2.putText(frame, "No face", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
-                # Reset counter when face is lost
-                self.closure_frames = 0
-                self.alert_on = False 
+                # No face detected - use grace period before resetting
+                self.no_face_frames += 1
+                cv2.putText(frame, f"No face ({self.no_face_frames})", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+                
+                # Only reset drowsiness state after grace period
+                if self.no_face_frames > self.NO_FACE_GRACE:
+                    self.closure_frames = 0
+                    self.closure_start_time = None
+                    self.alert_on = False 
                 
             # --- Display & Visualization ---
             
-            # We draw overlays on the ORIGINAL 'frame', so the user sees a natural image
-            cv2.putText(frame, f"EAR: {e_val:.3f}", (10, H - 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-            cv2.putText(frame, f"MAR: {m_val:.3f}", (10, H - 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
-            cv2.putText(frame, f"p(drowsy): {p_d:.2f}", (10, H - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+            # Determine which frame to display: enhanced (debug) or original (natural)
+            display_frame = frame_eq if self.show_enhanced else frame
+
+            # Display EAR, MAR, and probability (drawn on the display_frame)
+            cv2.putText(display_frame, f"EAR: {e_val:.3f}", (10, H - 90), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            cv2.putText(display_frame, f"MAR: {m_val:.3f}", (10, H - 60), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
+            cv2.putText(display_frame, f"p(drowsy): {p_d:.2f}", (10, H - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
+            
             # Display the closure frame count (helpful for debugging)
-            cv2.putText(frame, f"Closure Frames: {self.closure_frames}", (W - 300, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            cv2.putText(display_frame, f"Closure Frames: {self.closure_frames}", (W - 300, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            
+            # Display the view mode
+            # cv2.putText(display_frame, f"View: {'Enhanced (CLAHE)' if self.show_enhanced else 'Original (BGR)'} (Press 'e')", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 100, 255), 2)
 
-
-            # Draw the Alert Banner on the original frame
+            # Draw the Alert Banner
             if self.alert_on:
-                cv2.rectangle(frame, (0, 0), (W, 50), (0, 0, 255), -1)
-                cv2.putText(frame, "DROWSINESS DETECTED!", (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 3)
-            
-            # Show the original, natural-looking frame to the user
-            cv2.imshow("Vigi-Drive (Image-trained model)", frame)
-            
-            # (Optional) Uncomment the line below to see the enhanced frame
-            # cv2.imshow("Enhanced Frame (for MediaPipe)", frame_eq)
+                # Always draw the alert on the actual frame shown to the user
+                cv2.rectangle(display_frame, (0, 0), (W, 50), (0, 0, 255), -1)
+                cv2.putText(display_frame, "DROWSINESS DETECTED!", (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 3)
+
+            cv2.imshow("Vigi-Drive (Image-trained model)", display_frame)
 
             # --- Key Event Handling ---
             key = cv2.waitKey(1) & 0xFF
@@ -279,6 +398,10 @@ class DrowsinessDetector:
             elif key == ord("b"):
                 self._send_buzzer_signal(signal="1\n")
                 print("[Info] Test buzz signal sent.")
+            elif key == ord("e"):
+                # Toggle between enhanced and original frame view
+                self.show_enhanced = not self.show_enhanced
+                print(f"[Debug] Showing enhanced frame: {self.show_enhanced}")
 
         self.release_resources()
 
@@ -306,4 +429,3 @@ if __name__ == "__main__":
             detector.release_resources()
         except NameError:
             pass # Detector was never created
-
