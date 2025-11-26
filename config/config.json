@@ -1,0 +1,35 @@
+{
+  "camera": {
+    "index": 0,
+    "width": 640,
+    "height": 480,
+    "fps_target": 24
+  },
+  "serial": {
+    "enabled": false,
+    "port": "/dev/ttyACM0",
+    "baud": 9600
+  },
+  "logging": {
+    "events_csv": "data/logs/events.csv"
+  },
+  "inference": {
+    "mode": "ml",
+    "model_path": "src/models/earmar_img_logreg.joblib",
+    "prob_threshold": 0.70,
+    "window_seconds": 1.0,
+    "fps_assumed": 12,
+    "consecutive_frames": 14,
+    "EAR_CLOSED_THRESH": 0.20,
+    "mouth_open_threshold": 0.60,
+    "FRAMES_TO_ALERT": 30,
+    "ml_prob_weight": 20
+  },
+  "features": {
+    "sound_alerts": {
+      "enabled": true,
+      "sound_file": "sounds/drowsiness_alert.mp3",
+      "loop": true
+    }
+  }
+}
