@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-12">
+    <h2 class="text-gradient mb-3">📊 Event History</h2>
+    <p class="text-secondary">Drowsiness detection events logged by the system</p>
+  </div>
+</div>
+
+{% if events %}
+<div class="row mb-3">
+  <div class="col-md-8">
+    <p class="text-secondary">Showing {{ events|length }} event(s)</p>
+  </div>
+</div>
+
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>🕐 Timestamp</th>
+        <th>👁️ EAR</th>
+        <th>😮 MAR</th>
+        <th>🤖 p(drowsy)</th>
+        <th>🔍 State</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in events %}
+      <tr>
+        <td>{{ e.timestamp.strftime('%Y-%m-%d %H:%M:%S') if e.timestamp else 'N/A' }}</td>
+        <td>{{ "%.3f"|format(e.ear) if e.ear else 'N/A' }}</td>
+        <td>{{ "%.3f"|format(e.mar) if e.mar else 'N/A' }}</td>
+        <td>
+          {% if e.p_drowsy %}
+          <span
+            class="badge {% if e.p_drowsy > 0.7 %}bg-danger{% elif e.p_drowsy > 0.4 %}bg-warning{% else %}bg-success{% endif %}">
+            {{ "%.2f"|format(e.p_drowsy) }}
+          </span>
+          {% else %}
+          N/A
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge {% if 'drowsy' in e.state.lower() %}bg-danger{% else %}bg-secondary{% endif %}">
+            {{ e.state }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="alert alert-info">
+  <h5>ℹ️ No events logged yet</h5>
+  <p class="mb-0">Events will appear here when drowsiness is detected. Make sure the detector is running and monitoring.
+  </p>
+</div>
+{% endif %}
+
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="card-title">Understanding the Metrics</h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <strong>EAR (Eye Aspect Ratio)</strong>
+            <p class="small text-secondary mb-0">Values below 0.25 typically indicate closed eyes</p>
+          </div>
+          <div class="col-md-4">
+            <strong>MAR (Mouth Aspect Ratio)</strong>
+            <p class="small text-secondary mb-0">Higher values indicate mouth opening or yawning</p>
+          </div>
+          <div class="col-md-4">
+            <strong>p(drowsy)</strong>
+            <p class="small text-secondary mb-0">ML model probability: 0.7+ indicates high drowsiness risk</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

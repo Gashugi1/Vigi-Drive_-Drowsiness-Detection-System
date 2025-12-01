@@ -37,7 +37,7 @@ def main():
     ap = argparse.ArgumentParser(description="Extracts EAR and MAR features from images for drowsiness detection training.")
     ap.add_argument("--root", required=True, help="Root directory containing 'alert/' (label 0) and 'drowsy/' (label 1) subfolders.")
     ap.add_argument("--out", default="features/features_images.csv", help="Output path for the generated CSV file.")
-    ap.add_argument("--perclos_thr", type=float, default=0.20, help="EAR threshold for binary 'eye_close' feature.")
+    ap.add_argument("--perclos_thr", type=float, default=0.25, help="EAR threshold for binary 'eye_close' feature (should match inference EAR_CLOSED_THRESH).")
     ap.add_argument("--yawn_thr",    type=float, default=0.60, help="MAR threshold for binary 'mouth_open' feature.")
     args = ap.parse_args()
 

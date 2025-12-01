@@ -1,5 +1,13 @@
 opencv-python
 mediapipe
-numpy
+scipy
 pandas
-scikit-learn
+numpy
+scikit-learn==1.6.1
+Flask
+Flask-SQLAlchemy
+Flask-Login
+Authlib
+requests
+python-dotenv
+psutil>=5.9.0
