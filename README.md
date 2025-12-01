@@ -147,8 +147,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file for
 ## 📚 Documentation
 
 * [System Architecture](docs/SYSTEM_REVIEW.md)
-* [OAuth Setup Guide](docs/OAUTH_SETUP.md)
-* [Development Walkthrough](docs/DOCUMENTATION_WALKTHROUGH.md)
+
 
 ---
 
